@@ -1,0 +1,155 @@
+{
+    "minimax_config": {
+        "description": "MiniMax Token Plan 配置",
+        "type": "object",
+        "items": {
+            "token_plan_key": {
+                "description": "Token Plan Key",
+                "type": "string",
+                "default": "",
+                "hint": "在 https://platform.minimaxi.com 账户管理 > Token Plan 中获取"
+            },
+            "base_url": {
+                "description": "API 基础地址",
+                "type": "string",
+                "default": "https://api.minimaxi.com",
+                "hint": "中国大陆用户保持默认；海外用户可改为 https://api.minimax.io"
+            }
+        }
+    },
+    "image_config": {
+        "description": "图片生成配置 (image-01)",
+        "type": "object",
+        "items": {
+            "image_model": {
+                "description": "文生图模型",
+                "type": "string",
+                "default": "image-01",
+                "hint": "当前固定为 image-01"
+            },
+            "aspect_ratio": {
+                "description": "默认图片宽高比",
+                "type": "string",
+                "default": "16:9",
+                "options": ["16:9", "1:1", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9"],
+                "hint": "详见 README 中 aspect_ratio 与像素尺寸的对应关系表"
+            },
+            "width": {
+                "description": "自定义宽度(像素)",
+                "type": "int",
+                "default": 0,
+                "hint": "范围 512-2048，必须是 8 的倍数。设置后 aspect_ratio 仍然优先；设为 0 表示不启用"
+            },
+            "height": {
+                "description": "自定义高度(像素)",
+                "type": "int",
+                "default": 0,
+                "hint": "范围 512-2048，必须是 8 的倍数。需与 width 同时设置"
+            },
+            "image_n": {
+                "description": "每次生成数量",
+                "type": "int",
+                "default": 1,
+                "hint": "1-9 张"
+            }
+        }
+    },
+    "video_config": {
+        "description": "视频生成配置 (Hailuo)",
+        "type": "object",
+        "items": {
+            "video_model": {
+                "description": "文生视频模型",
+                "type": "string",
+                "default": "MiniMax-Hailuo-2.3",
+                "options": ["MiniMax-Hailuo-2.3", "MiniMax-Hailuo-2.3-Fast"],
+                "hint": "MiniMax-Hailuo-2.3: 标准版; MiniMax-Hailuo-2.3-Fast: 快速版"
+            },
+            "duration": {
+                "description": "视频时长(秒)",
+                "type": "int",
+                "default": 6,
+                "options": [6, 10],
+                "hint": "6 或 10 秒"
+            },
+            "resolution": {
+                "description": "视频分辨率",
+                "type": "string",
+                "default": "768P",
+                "options": ["768P", "1080P"],
+                "hint": "768P 或 1080P"
+            }
+        }
+    },
+    "reference_config": {
+        "description": "参考图与人设配置",
+        "type": "object",
+        "items": {
+            "default_persona": {
+                "description": "默认人设描述",
+                "type": "text",
+                "default": "",
+                "hint": "默认角色人设描述，文生图/图生图时自动拼接到提示词中作为参考"
+            },
+            "default_reference_image": {
+                "description": "默认参考图 URL",
+                "type": "string",
+                "default": "",
+                "hint": "默认参考图片 URL，图生图/图生视频时默认使用此图片作为参考"
+            },
+            "reference_images_json": {
+                "description": "参考图库 (JSON)",
+                "type": "text",
+                "default": "[]",
+                "hint": "预设参考图列表，JSON 格式：[{\"name\":\"角色名\",\"url\":\"https://...\",\"desc\":\"描述\"}]"
+            },
+            "uploaded_reference_images": {
+                "description": "上传参考图",
+                "type": "file",
+                "multiple": true,
+                "hint": "上传本地图片作为参考图，图生图时自动使用",
+                "default": []
+            }
+        }
+    },
+    "music_config": {
+        "description": "音乐生成配置 (Music-2.6)",
+        "type": "object",
+        "items": {
+            "music_model": {
+                "description": "音乐生成模型",
+                "type": "string",
+                "default": "music-2.6",
+                "options": ["music-2.6", "music-2.6-free"],
+                "hint": "music-2.6: 标准版; music-2.6-free: 免费版"
+            },
+            "lyrics_optimizer": {
+                "description": "自动生成歌词",
+                "type": "bool",
+                "default": true,
+                "hint": "开启后未提供歌词时由 AI 根据 prompt 自动生成"
+            },
+            "audio_format": {
+                "description": "音频输出格式",
+                "type": "string",
+                "default": "mp3",
+                "options": ["mp3", "wav", "pcm"],
+                "hint": "mp3, wav, 或 pcm"
+            },
+            "sample_rate": {
+                "description": "音频采样率",
+                "type": "int",
+                "default": 44100,
+                "options": [16000, 24000, 32000, 44100],
+                "hint": "16000, 24000, 32000, 44100"
+            },
+            "bitrate": {
+                "description": "音频比特率",
+                "type": "int",
+                "default": 128000,
+                "options": [32000, 64000, 128000, 256000],
+                "hint": "32000, 64000, 128000, 256000"
+            }
+        }
+    }
+}
