@@ -2,7 +2,7 @@ plugin_id: astrbot_plugin_minimax_media
 name: astrbot_plugin_minimax_media
 display_name: MiniMax Media Generator
 author: angela-hykt
-version: 1.0.0
+version: 1.0.1
 description: 对接 MiniMax Token Plan API 实现文生图、图生图、文生视频、图生视频、音乐生成，注册 LLM 工具供 Agent 调用。
 repo: https://github.com/angela-hykt/astrbot_plugin_minimax_media
 license: MIT

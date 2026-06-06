@@ -20,7 +20,7 @@ from astrbot.core.utils.astrbot_path import get_astrbot_plugin_data_path
     "astrbot_plugin_minimax_media",
     "angela-hykt",
     "对接 MiniMax Token Plan API 实现文生图、图生图、文生视频、图生视频、音乐生成",
-    "1.0.0",
+    "1.0.1",
     "https://github.com/angela-hykt/astrbot_plugin_minimax_media",
 )
 class MiniMaxMediaPlugin(Star):
@@ -329,6 +329,7 @@ class MiniMaxMediaPlugin(Star):
                 "model": self.image_model,
                 "prompt": final_prompt,
                 "aspect_ratio": self.aspect_ratio,
+                "n": self.image_n,
             }
             self._maybe_add_size(payload)
             result = await self._async_post("/v1/image_generation", payload)
@@ -385,6 +386,7 @@ class MiniMaxMediaPlugin(Star):
                 "prompt": final_prompt,
                 "aspect_ratio": self.aspect_ratio,
                 "subject_reference": subject_ref,
+                "n": self.image_n,
             }
             self._maybe_add_size(payload)
             result = await self._async_post("/v1/image_generation", payload)
@@ -543,26 +545,27 @@ class MiniMaxMediaPlugin(Star):
 
     @filter.llm_tool(name="minimax_t2i")
     async def llm_text_to_image(
-        self, event: AstrMessageEvent, prompt: str, aspect_ratio: str = "16:9", n: int = 1,
+        self, event: AstrMessageEvent, prompt: str, aspect_ratio: str = "", n: int = 0,
         prompt_optimizer: bool = False, seed: int = 0
-    ) -> MessageEventResult:
+    ) -> str:
         """使用 MiniMax image-01 模型根据文本描述生成图片。适合需要生成插画、设计图、概念图等场景。
         如果配置了默认人设，会自动拼接到提示词中。
 
         Args:
             prompt(string): 图片描述提示词，用英文或中文详细描述想要的画面内容
-            aspect_ratio(string): 图片宽高比，可选 16:9, 1:1, 9:16, 4:3, 3:4, 21:9，默认 16:9
-            n(int): 生成图片数量，1-9 张，默认 1
+            aspect_ratio(string): 图片宽高比，可选 16:9, 1:1, 9:16, 4:3, 3:4, 21:9，传空字符串使用配置默认值
+            n(int): 生成图片数量，1-9 张，传 0 或省略使用配置默认值
             prompt_optimizer(bool): 是否自动优化提示词，默认 false
             seed(int): 随机种子，相同种子可复现相近结果，默认 0 表示不指定
         """
         try:
-            n = max(1, min(int(n) if n else 1, 9))
+            n = self.image_n if n <= 0 else n
+            n = max(1, min(int(n), 9))
             final_prompt = self._build_prompt_with_persona(prompt)
             payload = {
                 "model": self.image_model,
                 "prompt": final_prompt,
-                "aspect_ratio": aspect_ratio,
+                "aspect_ratio": aspect_ratio or self.aspect_ratio,
                 "n": n,
             }
             if prompt_optimizer:
@@ -573,41 +576,42 @@ class MiniMaxMediaPlugin(Star):
             result = await self._async_post("/v1/image_generation", payload)
             if result.get("base_resp", {}).get("status_code") != 0:
                 msg = result.get("base_resp", {}).get("status_msg", "未知错误")
-                return event.plain_result(f"文生图失败: {msg}")
+                return f"文生图失败: {msg}"
 
             image_urls = result.get("data", {}).get("image_urls", [])
             image_base64s = result.get("data", {}).get("image_base64s", [])
 
             if not image_urls and not image_base64s:
-                return event.plain_result("未生成图片")
+                return "未生成图片"
 
-            async for chain in self._send_image_result(event, image_urls[:n], image_base64s[:n]):
-                await event.send(chain)
-            return event.plain_result("图片已生成")
+            async for _ in self._send_image_result(event, image_urls[:n], image_base64s[:n]):
+                pass
+            return f"已通过文生图生成 {len(self._last_generated_images)} 张图片"
         except Exception as e:
-            return event.plain_result(f"文生图出错: {e}")
+            return f"文生图出错: {e}"
 
     @filter.llm_tool(name="minimax_i2i")
     async def llm_image_to_image(
-        self, event: AstrMessageEvent, prompt: str, image: str = "", n: int = 1,
+        self, event: AstrMessageEvent, prompt: str, image: str = "", n: int = 0,
         aspect_ratio: str = "", prompt_optimizer: bool = False, seed: int = 0
-    ) -> MessageEventResult:
+    ) -> str:
         """使用 MiniMax image-01 模型基于参考图片进行图生图。适合对已有图片进行风格变换、修饰等。
 
         Args:
             prompt(string): 对参考图片的修改描述或风格变换提示词
             image(string): 参考图片路径，传入后优先使用此图片作为参考。可传本地路径或URL
-            n(int): 生成图片数量，1-9 张，默认 1
+            n(int): 生成图片数量，1-9 张，传 0 或省略使用配置默认值
             aspect_ratio(string): 图片宽高比，可选 16:9, 1:1, 9:16, 4:3, 3:4, 21:9，默认使用配置值
             prompt_optimizer(bool): 是否自动优化提示词，默认 false
             seed(int): 随机种子，相同种子可复现相近结果，默认 0 表示不指定
         """
         image_file = image if image else await self._resolve_reference_image(event)
         if not image_file:
-            return event.plain_result("需要提供一张参考图片，请附带一张图片或配置默认参考图 URL")
+            return "需要提供一张参考图片，请附带一张图片或配置默认参考图 URL"
 
         try:
-            n = max(1, min(int(n) if n else 1, 9))
+            n = self.image_n if n <= 0 else n
+            n = max(1, min(int(n), 9))
             final_prompt = self._build_prompt_with_persona(prompt)
             subject_ref = await self._image_to_subject_ref(image_file)
             payload = {
@@ -625,24 +629,24 @@ class MiniMaxMediaPlugin(Star):
             result = await self._async_post("/v1/image_generation", payload)
             if result.get("base_resp", {}).get("status_code") != 0:
                 msg = result.get("base_resp", {}).get("status_msg", "未知错误")
-                return event.plain_result(f"图生图失败: {msg}")
+                return f"图生图失败: {msg}"
 
             image_urls = result.get("data", {}).get("image_urls", [])
             image_base64s = result.get("data", {}).get("image_base64s", [])
 
             if not image_urls and not image_base64s:
-                return event.plain_result("未生成图片")
+                return "未生成图片"
 
-            async for chain in self._send_image_result(event, image_urls[:n], image_base64s[:n]):
-                await event.send(chain)
-            return event.plain_result("图片已生成")
+            async for _ in self._send_image_result(event, image_urls[:n], image_base64s[:n]):
+                pass
+            return f"已通过图生图生成 {len(self._last_generated_images)} 张图片"
         except Exception as e:
-            return event.plain_result(f"图生图出错: {e}")
+            return f"图生图出错: {e}"
 
     @filter.llm_tool(name="minimax_t2v")
     async def llm_text_to_video(
         self, event: AstrMessageEvent, prompt: str, duration: int = 0, resolution: str = ""
-    ) -> MessageEventResult:
+    ) -> str:
         """使用 MiniMax Hailuo 模型根据文本描述生成视频。适合需要生成短视频、动画片段、动态视觉内容等场景。
 
         Args:
@@ -661,27 +665,27 @@ class MiniMaxMediaPlugin(Star):
             })
             if result.get("base_resp", {}).get("status_code") != 0:
                 msg = result.get("base_resp", {}).get("status_msg", "未知错误")
-                return event.plain_result(f"视频生成失败: {msg}")
+                return f"视频生成失败: {msg}"
 
             task_id = result.get("data", {}).get("task_id", "")
             if not task_id:
-                return event.plain_result("未获取到任务 ID")
+                return "未获取到任务 ID"
 
             poll_result = await self._poll_video_task(task_id)
             video_url = poll_result.get("data", {}).get("video_url", "")
             if not video_url:
-                return event.plain_result("未获取到视频链接")
+                return "未获取到视频链接"
 
             dest = self._get_download_path("t2v", "mp4")
             await self._download_file(video_url, dest)
-            return event.chain_result([Video(file=dest)])
+            return f"已通过文生视频生成，文件: {dest}"
         except Exception as e:
-            return event.plain_result(f"文生视频出错: {e}")
+            return f"文生视频出错: {e}"
 
     @filter.llm_tool(name="minimax_i2v")
     async def llm_image_to_video(
         self, event: AstrMessageEvent, prompt: str, duration: int = 0, resolution: str = ""
-    ) -> MessageEventResult:
+    ) -> str:
         """使用 MiniMax Hailuo 模型基于参考图片生成视频。优先使用用户消息中附带的图片作为参考，否则使用配置的默认参考图。
         调用前需先说明需要用户提供参考图片。
 
@@ -692,7 +696,7 @@ class MiniMaxMediaPlugin(Star):
         """
         image_file = await self._resolve_reference_image(event)
         if not image_file:
-            return event.plain_result("需要提供一张参考图片，请附带一张图片或配置默认参考图 URL")
+            return "需要提供一张参考图片，请附带一张图片或配置默认参考图 URL"
 
         try:
             first_frame_url = await self._upload_image_for_video(image_file)
@@ -707,22 +711,22 @@ class MiniMaxMediaPlugin(Star):
             })
             if result.get("base_resp", {}).get("status_code") != 0:
                 msg = result.get("base_resp", {}).get("status_msg", "未知错误")
-                return event.plain_result(f"图生视频失败: {msg}")
+                return f"图生视频失败: {msg}"
 
             task_id = result.get("data", {}).get("task_id", "")
             if not task_id:
-                return event.plain_result("未获取到任务 ID")
+                return "未获取到任务 ID"
 
             poll_result = await self._poll_video_task(task_id)
             video_url = poll_result.get("data", {}).get("video_url", "")
             if not video_url:
-                return event.plain_result("未获取到视频链接")
+                return "未获取到视频链接"
 
             dest = self._get_download_path("i2v", "mp4")
             await self._download_file(video_url, dest)
-            return event.chain_result([Video(file=dest)])
+            return f"已通过图生视频生成，文件: {dest}"
         except Exception as e:
-            return event.plain_result(f"图生视频出错: {e}")
+            return f"图生视频出错: {e}"
 
     @filter.command("minimax_music")
     async def music_generation_cmd(self, event: AstrMessageEvent, prompt: str = ""):
@@ -767,7 +771,7 @@ class MiniMaxMediaPlugin(Star):
             elif lyrics:
                 payload["lyrics"] = lyrics
             else:
-                payload["lyrics_optimizer"] = True
+                payload["lyrics_optimizer"] = self.lyrics_optimizer
 
             result = await self._async_post("/v1/music_generation", payload)
             if result.get("base_resp", {}).get("status_code") != 0:
@@ -790,7 +794,7 @@ class MiniMaxMediaPlugin(Star):
     @filter.llm_tool(name="minimax_music")
     async def llm_music_generation(
         self, event: AstrMessageEvent, prompt: str, lyrics: str = "", is_instrumental: bool = False
-    ) -> MessageEventResult:
+    ) -> str:
         """使用 MiniMax Music-2.6 模型根据文本描述生成音乐。适合需要生成背景音乐、歌曲、配乐等场景。
 
         Args:
@@ -814,20 +818,20 @@ class MiniMaxMediaPlugin(Star):
             elif lyrics and lyrics.strip():
                 payload["lyrics"] = lyrics
             else:
-                payload["lyrics_optimizer"] = True
+                payload["lyrics_optimizer"] = self.lyrics_optimizer
 
             result = await self._async_post("/v1/music_generation", payload)
             if result.get("base_resp", {}).get("status_code") != 0:
                 msg = result.get("base_resp", {}).get("status_msg", "未知错误")
-                return event.plain_result(f"音乐生成失败: {msg}")
+                return f"音乐生成失败: {msg}"
 
             audio_url = result.get("data", {}).get("audio_url", "")
             if not audio_url:
-                return event.plain_result("未获取到音频链接")
+                return "未获取到音频链接"
 
             ext = "wav" if self.audio_format == "pcm" else self.audio_format
             dest = self._get_download_path("music", ext)
             await self._download_file(audio_url, dest)
-            return event.chain_result([Record(file=dest)])
+            return f"已通过音乐生成生成，文件: {dest}"
         except Exception as e:
-            return event.plain_result(f"音乐生成出错: {e}")
+            return f"音乐生成出错: {e}"

@@ -132,17 +132,20 @@
 
 ## 🛠️ LLM 工具
 
-Agent 可自动调用的工具：
+Agent 可自动调用的工具。工具结果不会自动发送给用户，而是返回给 Agent 自行处理：
 
 | 工具名 | 功能 | 关键参数 |
 |--------|------|----------|
 | `minimax_t2i` | 文生图 | `prompt`, `aspect_ratio`, `n` |
-| `minimax_i2i` | 图生图 | `prompt`, `image` (参考图路径) |
+| `minimax_i2i` | 图生图 | `prompt`, `image` (参考图路径), `n`, `aspect_ratio` |
 | `minimax_t2v` | 文生视频 | `prompt`, `duration`, `resolution` |
-| `minimax_i2v` | 图生视频 | `prompt`, `image` (参考图路径) |
+| `minimax_i2v` | 图生视频 | `prompt`, `duration`, `resolution` |
 | `minimax_music` | 音乐生成 | `prompt`, `lyrics`, `is_instrumental` |
 
-> **注意**：配置了 `default_persona` 时，文生图和图生图工具会自动拼接到提示词前。
+> **注意**：
+> - 配置了 `default_persona` 时，文生图和图生图工具会自动拼接到提示词前。
+> - `n` / `aspect_ratio` 传 0 或省略时使用配置默认值，Agent 可显式传值覆盖。
+> - 工具只将生成结果信息（如文件路径）返回给 Agent，不会自动发送媒体到聊天。
 
 ---
 
@@ -163,6 +166,8 @@ Agent 可自动调用的工具：
 - 生成的图片/视频/音乐会下载到插件目录下的 `downloads/` 文件夹
 - `output_format` 固定为 `url`，返回的媒体链接有效期为 24 小时，下载后请及时保存
 - 音乐生成模型 `music-2.6-free` 为免费版本可能有调用限制
+- **LLM 工具**：Agent 调用后不会自动发送媒体到聊天，结果以文本形式返回给 Agent
+- **批量生图**：配置 `image_n` 或工具传参 `n` 可一次生成 1-9 张图片
 
 ---
 
@@ -170,7 +175,7 @@ Agent 可自动调用的工具：
 
 本项目采用 MIT 许可证开源。
 
-**版本**: 1.0.0
+**版本**: 1.0.1
 **仓库**: [https://github.com/angela-hykt/astrbot_plugin_minimax_media](https://github.com/angela-hykt/astrbot_plugin_minimax_media)
 
 ---
@@ -297,17 +302,20 @@ All configuration items can be filled in through the AstrBot management panel.
 
 ## 🛠️ LLM Tools
 
-Tools available for automatic invocation by Agent:
+Tools available for automatic invocation by Agent. Results are returned to the Agent as text (not auto-sent to the chat):
 
 | Tool Name | Function | Key Parameters |
 |-----------|----------|----------------|
 | `minimax_t2i` | Text-to-Image | `prompt`, `aspect_ratio`, `n` |
-| `minimax_i2i` | Image-to-Image | `prompt`, `image` (reference image path) |
+| `minimax_i2i` | Image-to-Image | `prompt`, `image` (reference image path), `n`, `aspect_ratio` |
 | `minimax_t2v` | Text-to-Video | `prompt`, `duration`, `resolution` |
-| `minimax_i2v` | Image-to-Video | `prompt`, `image` (reference image path) |
+| `minimax_i2v` | Image-to-Video | `prompt`, `duration`, `resolution` |
 | `minimax_music` | Music Generation | `prompt`, `lyrics`, `is_instrumental` |
 
-> **Note**: When `default_persona` is configured, text-to-image and image-to-image tools will automatically prepend it to the prompt.
+> **Note**:
+> - When `default_persona` is configured, text-to-image and image-to-image tools will automatically prepend it to the prompt.
+> - Pass 0 or omit `n` / `aspect_ratio` to use the configured defaults; the Agent can override them explicitly.
+> - Tools return generation result info (e.g., file paths) to the Agent; media is not auto-sent to the chat.
 
 ---
 
@@ -328,6 +336,8 @@ Reference image priority for image-to-image / image-to-video (highest to lowest)
 - Generated images/videos/music will be downloaded to the `downloads/` folder under the plugin directory
 - `output_format` is fixed to `url`, the returned media link is valid for 24 hours, please save promptly after downloading
 - The music generation model `music-2.6-free` is a free version and may have usage limits
+- **LLM Tools**: Media is not auto-sent to the chat when called by the Agent; results are returned to the Agent as text
+- **Batch Generation**: Configure `image_n` or pass `n` via tool parameters to generate 1-9 images per call
 
 ---
 
@@ -335,5 +345,5 @@ Reference image priority for image-to-image / image-to-video (highest to lowest)
 
 This project is open source under the MIT License.
 
-**Version**: 1.0.0
+**Version**: 1.0.1
 **Repository**: [https://github.com/angela-hykt/astrbot_plugin_minimax_media](https://github.com/angela-hykt/astrbot_plugin_minimax_media)
